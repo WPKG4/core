@@ -3,6 +3,9 @@ use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::str::from_utf8;
 use std::error::Error;
+use std::time::Duration;
+use tokio::time;
+use tokio::time::Instant;
 
 enum HandlerState {
     ReadingHeader,
@@ -32,6 +35,7 @@ struct MessagePayload {
 pub(crate) struct TcpClient {
     stream: TcpStream,
     state: HandlerState,
+    last_action: Instant,
     buffer: Vec<u8>,
 }
 
@@ -40,6 +44,7 @@ impl TcpClient {
         TcpClient {
             stream,
             state: HandlerState::ReadingHeader,
+            last_action: Instant::now(),
             buffer: Vec::new(),
         }
     }
@@ -67,17 +72,36 @@ impl TcpClient {
     }
 
     async fn read_header(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut buf = vec![0; 1]; // A buffer of 1 byte
-        while let Ok(n) = self.stream.read(&mut buf).await {
-            if n == 0 {
-                return Err("Connection closed".into());
-            }
+        let mut buf = vec![0; 1];
+        loop {
+            let timeout = Duration::from_secs(5);
+            let result = time::timeout(timeout, self.stream.read(&mut buf)).await;
 
-            if buf[0] == b'\n' {
-                break;
-            }
+            match result {
+                Ok(Ok(n)) if n > 0 => {
+                    self.last_action = Instant::now();
 
-            self.buffer.push(buf[0]);
+                    if buf[0] == b'\n' {
+                        break;
+                    }
+
+                    self.buffer.push(buf[0]);
+                }
+                Ok(Ok(0)) => {
+                    return Err("Connection closed".into());
+                }
+                Ok(Err(e)) => {
+                    return Err(Box::new(e));
+                }
+                Err(_) => {
+                    if self.last_action.elapsed() >= Duration::from_secs(5*60) {
+                        self.stream.write_all(b"p\n").await?;
+                        println!("Sent 'p' to the server after 5 seconds of inactivity");
+                        self.last_action = Instant::now();
+                    }
+                }
+                _ => {}
+            }
         }
 
         let cloned_buffer = self.buffer.to_vec();
