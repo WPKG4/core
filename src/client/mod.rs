@@ -1,2 +1,2 @@
-pub(crate) mod wtp;
-pub mod types;
+pub mod net;
+pub(crate) mod coreclient;

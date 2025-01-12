@@ -1,11 +1,12 @@
+use figlet_rs::FIGfont;
 use std::error::Error;
 use tokio::net::TcpStream;
-use figlet_rs::FIGfont;
 use tracing::info;
+use crate::client::coreclient::CoreClient;
 
 mod client;
-mod logger;
 mod config;
+mod logger;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -14,12 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
     
-    let addr = "127.0.0.1:5000";
-    let stream = TcpStream::connect(addr).await?;
-    info!("Connected to server at {}", addr);
 
-    let mut client = crate::client::wtp::WtpClient::new(stream).await;
-    client.process().await?;
+    let mut client = CoreClient::new().await?;
+    client.register().await?;
 
     Ok(())
 }
