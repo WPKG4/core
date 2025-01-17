@@ -57,7 +57,7 @@ pub async fn load_config() -> Result<()> {
 }
 
 pub async fn save_config() -> Result<()> {
-    if (!INSTALL_PATH.exists()) {
+    if !INSTALL_PATH.exists() {
         fs::create_dir_all(&*INSTALL_PATH)?;
     }
     let config = CONFIG.read().await.clone();

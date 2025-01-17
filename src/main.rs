@@ -3,8 +3,7 @@ use crate::client::coreclient::CoreClient;
 use crate::config::{INSTALL_PATH, IP};
 use figlet_rs::FIGfont;
 use std::error::Error;
-use tokio::net::TcpStream;
-use tracing::{debug, info};
+use tracing::{debug};
 
 mod client;
 mod config;
@@ -18,7 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
     
-    if (env::current_exe()?.parent().ok_or_else(|| "Could not get current executable path!")? != INSTALL_PATH.as_path() && !cfg!(debug_assertions)) {
+    if env::current_exe()?.parent().ok_or("Could not get current executable path!")? != INSTALL_PATH.as_path() && !cfg!(debug_assertions) {
         install::install().await?;
     }
     

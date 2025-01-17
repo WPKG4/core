@@ -58,10 +58,10 @@ where
                     header.push(buf[0]);
                 }
                 Ok(Ok(0)) => {
-                    return Err(anyhow::anyhow!("Connection closed").into());
+                    return Err(anyhow::anyhow!("Connection closed"));
                 }
                 Ok(Err(e)) => {
-                    return Err(anyhow::anyhow!("{}", e).into());
+                    return Err(anyhow::anyhow!("{}", e));
                 }
                 Err(_) => {
                     if self.last_action.elapsed() >= *PING_INTERVAL {

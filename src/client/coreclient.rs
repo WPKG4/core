@@ -10,7 +10,6 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
-use whoami::fallible;
 use whoami::fallible::{hostname, username};
 
 pub(crate) struct CoreClient<R>

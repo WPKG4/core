@@ -1,5 +1,6 @@
 use crate::client::net::types::shared::MessagePayload;
 use std::collections::HashMap;
+use std::fmt;
 
 pub enum OutPayloadType {
     Action(OutActionPayload),
@@ -12,13 +13,12 @@ pub struct OutActionPayload {
     pub(crate) parameters: HashMap<String, String>,
 }
 
-impl OutActionPayload {
-    pub fn to_string(&self) -> String {
-        let mut result = format!("a {}\n", self.name);
+impl fmt::Display for OutActionPayload {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "a {}", self.name)?;
         for (key, value) in &self.parameters {
-            result.push_str(&format!("{}: {}\n", key, value));
+            writeln!(f, "{}: {}", key, value)?;
         }
-        result.push('\n');
-        result
+        writeln!(f)
     }
 }

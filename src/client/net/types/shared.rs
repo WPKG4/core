@@ -1,12 +1,13 @@
+use std::fmt;
+
 #[derive(Clone)]
 pub struct MessagePayload {
     pub length: usize,
     pub message: String,
 }
 
-impl MessagePayload {
-    pub fn to_string(&self) -> String {
-        let result = format!("m {}\n{}", self.message.len(), self.message);
-        result
+impl fmt::Display for MessagePayload {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "m {}\n{}", self.message.len(), self.message)
     }
 }
