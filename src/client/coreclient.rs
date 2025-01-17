@@ -1,17 +1,17 @@
+use crate::client::net::types::r#in::payloads::InPayloadType;
+use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::wtp::WtpClient;
+use crate::config::{UUID};
+use anyhow::Result;
+use rustls_pki_types::ServerName;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
-use anyhow::Result;
-use rustls_pki_types::ServerName;
 use tokio_rustls::client::TlsStream;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use whoami::fallible;
 use whoami::fallible::{hostname, username};
-use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
-use crate::client::net::types::r#in::payloads::InPayloadType;
-use crate::client::net::wtp::WtpClient;
-use crate::config::{IP, UUID};
 
 pub(crate) struct CoreClient<R>
 where
@@ -21,26 +21,26 @@ where
 }
 
 impl CoreClient<TcpStream> {
-    pub async fn new() -> Result<Self> {
+    pub async fn new(ip: &str) -> Result<Self> {
         Ok(CoreClient {
-            wtp_client: WtpClient::new(TcpStream::connect(IP).await?).await,
+            wtp_client: WtpClient::new(TcpStream::connect(ip).await?),
         })
     }
 }
 impl CoreClient<TlsStream<TcpStream>> {
-    pub async fn new_tls() -> Result<Self> {
+    pub async fn new_tls(ip: &str) -> Result<Self> {
         let mut root_store = rustls::RootCertStore::empty();
         root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
         let config = rustls::ClientConfig::builder()
             .with_root_certificates(root_store)
             .with_no_client_auth();
 
-        let address_without_port = match IP.split_once(':') {
+        let address_without_port = match ip.split_once(':') {
             Some((address_without_port, _)) => address_without_port,
-            None => IP,
+            None => ip,
         };
 
-        let stream = TcpStream::connect(IP).await?;
+        let stream = TcpStream::connect(ip).await?;
 
         let connector = tokio_rustls::TlsConnector::from(Arc::new(config));
         let tls_stream = connector
@@ -49,11 +49,9 @@ impl CoreClient<TlsStream<TcpStream>> {
                 stream,
             )
             .await?;
-        Ok(
-            CoreClient {
-                wtp_client: WtpClient::new(tls_stream).await
-            }
-        )
+        Ok(CoreClient {
+            wtp_client: WtpClient::new(tls_stream),
+        })
     }
 }
 impl<R> CoreClient<R>
@@ -61,14 +59,23 @@ where
     R: AsyncRead + AsyncWrite + Unpin,
 {
     pub async fn register(&mut self) -> Result<()> {
-        let resp = self.wtp_client.send_packet(OutPayloadType::Action(OutActionPayload {
-            name: "core-init".to_string(),
-            parameters: HashMap::from([
-                ("uuid".to_string(), UUID.to_string()),
-                ("user".to_string(), username().unwrap_or("UNKNOWN".to_string())),
-                ("hostname". to_string(), hostname().unwrap_or("UNKNOWN".to_string()))
-            ]),
-        })).await?;
+        let resp = self
+            .wtp_client
+            .send_packet(OutPayloadType::Action(OutActionPayload {
+                name: "core-init".to_string(),
+                parameters: HashMap::from([
+                    ("uuid".to_string(), UUID.to_string()),
+                    (
+                        "user".to_string(),
+                        username().unwrap_or("UNKNOWN".to_string()),
+                    ),
+                    (
+                        "hostname".to_string(),
+                        hostname().unwrap_or("UNKNOWN".to_string()),
+                    ),
+                ]),
+            }))
+            .await?;
         match resp {
             InPayloadType::Action(action) => {
                 if action.error == "OK" {
@@ -76,11 +83,24 @@ where
                 } else {
                     error!("Client could not register successfully: {}", action.message);
                 }
-            },
+            }
             InPayloadType::Message(_) => {
                 error!("Client received unexpected message");
             }
         }
         Ok(())
+    }
+
+    pub async fn handle(&mut self) -> Result<()> {
+        loop {
+            match self.wtp_client.read_packet().await? {
+                InPayloadType::Action(action) => {
+                    debug!("Client received action: {}", action.name);
+                }
+                InPayloadType::Message(message) => {
+                    debug!("Client received message: {}", message.message);
+                }
+            }
+        }
     }
 }

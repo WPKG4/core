@@ -1,3 +1,4 @@
+use crate::client::net::types::r#in::payloads::{InActionPayload, InPayloadType};
 use crate::client::net::types::out::payloads::OutPayloadType;
 use crate::client::net::types::shared::MessagePayload;
 use crate::config::PING_INTERVAL;
@@ -5,10 +6,8 @@ use anyhow::{Context, Result};
 use std::str::from_utf8;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time;
-use tokio::time::Instant;
+use tokio::time::{self, Instant};
 use tracing::{debug, info};
-use crate::client::net::types::r#in::payloads::{InActionPayload, InPayloadType};
 
 pub(crate) struct WtpClient<R: AsyncRead + AsyncWrite + Unpin> {
     stream: R,
@@ -19,7 +18,7 @@ impl<R> WtpClient<R>
 where
     R: AsyncRead + AsyncWrite + Unpin,
 {
-    pub(crate) async fn new(stream: R) -> Self {
+    pub(crate) fn new(stream: R) -> Self {
         WtpClient {
             stream,
             last_action: Instant::now(),
@@ -27,31 +26,26 @@ where
     }
 
     pub async fn send_packet(&mut self, payload_type: OutPayloadType) -> Result<InPayloadType> {
-        match payload_type {
-            OutPayloadType::Action(payload) => {
-                self.stream
-                    .write_all(payload.to_string().as_bytes())
-                    .await
-                    .context("Failed to send action payload")?;
-                self.read_packet().await
-            }
-            OutPayloadType::Message(payload) => {
-                self.stream
-                    .write_all(payload.to_string().as_bytes())
-                    .await
-                    .context("Failed to send message payload")?;
-                self.read_packet().await
-            }
-        }
+        let payload_data = match payload_type {
+            OutPayloadType::Action(payload) => payload.to_string(),
+            OutPayloadType::Message(payload) => payload.to_string(),
+        };
+
+        self.stream
+            .write_all(payload_data.as_bytes())
+            .await
+            .context("Failed to send payload")?;
+        debug!("Sent payload: {}", payload_data);
+
+        self.read_packet().await
     }
 
     pub async fn read_packet(&mut self) -> Result<InPayloadType> {
-        let mut buf = vec![0; 1];
         let mut header = Vec::new();
 
         loop {
-            let timeout = Duration::from_secs(5);
-            let result = time::timeout(timeout, self.stream.read(&mut buf)).await;
+            let mut buf = [0; 1];
+            let result = time::timeout(Duration::from_secs(5), self.stream.read(&mut buf)).await;
 
             match result {
                 Ok(Ok(n)) if n > 0 => {
@@ -83,78 +77,68 @@ where
             }
         }
 
-        let header = from_utf8(&header).context("Failed to parse header from bytes")?;
+        let header = from_utf8(&header).context("Failed to parse header")?;
+        debug!("Parsed header: {}", header);
 
         match header.chars().next() {
-            None => Err(anyhow::anyhow!("Invalid header!").into()),
-            Some(char) => match char {
-                'a' => {
-                    let header_values: Vec<&str> = header.split_whitespace().collect();
-
-                    let error_code = header_values.get(2).ok_or_else(|| {
-                        anyhow::anyhow!("Invalid header! Error code not found.")
-                    })?;
-
-                    let action_name = header_values.get(1).ok_or_else(|| {
-                        anyhow::anyhow!("Invalid header! Action name not found.")
-                    })?;
-
-                    let len = header_values.get(3).ok_or_else(|| {
-                        anyhow::anyhow!("Invalid header! Length not found.")
-                    })?;
-
-                    let len: usize = len.parse().map_err(|_| {
-                        anyhow::anyhow!("Invalid header! Length is not a valid number.")
-                    })?;
-
-                    let message = self.read_exact_bytes(len).await?;
-
-                    debug!("<ACTION PAYLOAD> {} \"{}\" len {}: {}", error_code, action_name, len, message);
-
-                    Ok(InPayloadType::Action(InActionPayload {
-                        error: error_code.to_string(),
-                        message,
-                        name: action_name.to_string(),
-                        message_length: len,
-                    }))
-                }
-                'm' => {
-                    let header_values: Vec<&str> = header.split_whitespace().collect();
-
-                    let len = header_values.get(2).ok_or_else(|| {
-                        anyhow::anyhow!("Invalid header! Length not found.")
-                    })?;
-
-                    let len: usize = len.parse().map_err(|_| {
-                        anyhow::anyhow!("Invalid header! Length is not a valid number.")
-                    })?;
-
-                    let message = self.read_exact_bytes(len).await?;
-
-                    Ok(InPayloadType::Message(MessagePayload {
-                        length: len,
-                        message,
-                    }))
-                }
-                _ => Err(anyhow::anyhow!("Unimplemented header type!").into()),
-            },
+            Some('a') => self.parse_action_payload(header).await,
+            Some('m') => self.parse_message_payload(header).await,
+            _ => Err(anyhow::anyhow!("Unimplemented header type")),
         }
     }
 
+    async fn parse_action_payload(&mut self, header: &str) -> Result<InPayloadType> {
+        let parts: Vec<&str> = header.split_whitespace().collect();
+        let (error_code, action_name, len) = (
+            parts.get(2).context("Missing error code")?,
+            parts.get(1).context("Missing action name")?,
+            parts
+                .get(3)
+                .context("Missing length")?
+                .parse::<usize>()
+                .context("Invalid length")?,
+        );
+
+        let message = self.read_exact_bytes(len).await?;
+        info!(
+            "<ACTION PAYLOAD> {} \"{}\" len {}: {}",
+            error_code, action_name, len, message
+        );
+
+        Ok(InPayloadType::Action(InActionPayload {
+            error: error_code.to_string(),
+            name: action_name.to_string(),
+            message_length: len,
+            message,
+        }))
+    }
+
+    async fn parse_message_payload(&mut self, header: &str) -> Result<InPayloadType> {
+        let parts: Vec<&str> = header.split_whitespace().collect();
+        let len = parts
+            .get(1)
+            .context("Missing length")?
+            .parse::<usize>()
+            .context("Invalid length")?;
+
+        let message = self.read_exact_bytes(len).await?;
+        info!("<MESSAGE PAYLOAD>: len={}, message={}", len, message);
+
+        Ok(InPayloadType::Message(MessagePayload {
+            length: len,
+            message,
+        }))
+    }
+
     async fn read_exact_bytes(&mut self, len: usize) -> Result<String> {
-        let mut buf = Vec::with_capacity(len);
+        let mut buf = vec![0; len];
+        self.stream
+            .read_exact(&mut buf)
+            .await
+            .context("Failed to read exact bytes")?;
 
-        while buf.len() < len {
-            let remaining_len = len - buf.len();
-            let mut temp_buf = vec![0; remaining_len];
-
-            self.stream.read_exact(&mut temp_buf).await
-                .context("Failed to read exact bytes")?;
-
-            buf.extend_from_slice(&temp_buf);
-        }
-
-        let message = from_utf8(&buf).context("Failed to parse message from bytes")?;
+        let message = from_utf8(&buf).context("Failed to parse message")?;
+        debug!("Read exact bytes: {}", message);
 
         Ok(message.to_string())
     }
