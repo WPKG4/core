@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 pub mod hello;
 
 #[async_trait]
-pub trait Command<R>
+pub trait Command<R>: Send + Sync
 where
     R: AsyncRead + AsyncWrite + Unpin,
 {

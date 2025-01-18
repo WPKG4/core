@@ -1,9 +1,9 @@
-use crate::client::coreclient::CoreClient;
 use crate::config::{INSTALL_PATH, IP};
 use figlet_rs::FIGfont;
 use std::env;
 use std::error::Error;
 use tracing::debug;
+use crate::client::masterclient::MasterClient;
 
 mod client;
 mod commands;
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     config::load_config().await?;
     debug!("Config test value: {}", config::get_config("test").await?);
 
-    let mut client = CoreClient::new(IP).await?;
+    let mut client = MasterClient::new(IP).await?;
     client.register().await?;
     client.handle().await?;
 

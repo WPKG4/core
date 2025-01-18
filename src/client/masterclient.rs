@@ -1,38 +1,39 @@
 use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
-use crate::config::UUID;
+use crate::config::{IP, UUID};
 use anyhow::Result;
 use std::collections::HashMap;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
+use whoami::fallible::{hostname, username};
+use crate::client::coreclient::CoreClient;
 use crate::client::net::tls::tls_stream;
-use crate::commands::CommandsManager;
 
-pub(crate) struct CoreClient<R>
+pub(crate) struct MasterClient<R>
 where
     R: AsyncRead + AsyncWrite + Unpin,
 {
     pub(crate) wtp_client: WtpClient<R>,
 }
 
-impl CoreClient<TcpStream> {
+impl MasterClient<TcpStream> {
     pub async fn new(ip: &str) -> Result<Self> {
-        Ok(CoreClient {
+        Ok(MasterClient {
             wtp_client: WtpClient::new(TcpStream::connect(ip).await?),
         })
     }
 }
-impl CoreClient<TlsStream<TcpStream>> {
+impl MasterClient<TlsStream<TcpStream>> {
     pub async fn new_tls(ip: &str) -> Result<Self> {
-        Ok(CoreClient {
+        Ok(MasterClient {
             wtp_client: WtpClient::new(tls_stream(ip).await?),
         })
     }
 }
-impl<R> CoreClient<R>
+impl<R> MasterClient<R>
 where
     R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
@@ -41,27 +42,34 @@ where
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
-                    ("uuid".to_string(), UUID.to_string())
+                    ("uuid".to_string(), UUID.to_string()),
+                    (
+                        "user".to_string(),
+                        username().unwrap_or("UNKNOWN".to_string()),
+                    ),
+                    (
+                        "hostname".to_string(),
+                        hostname().unwrap_or("UNKNOWN".to_string()),
+                    ),
                 ]),
             }))
             .await?;
         match self.wtp_client.read_packet().await? {
             InPayloadType::Action(action) => {
                 if action.error == "OK" {
-                    info!("Core client registered successfully");
+                    info!("Master Client registered successfully");
                 } else {
-                    error!("Core client could not register successfully: {}", action.message);
+                    error!("Master Client could not register successfully: {}", action.message);
                 }
             }
             InPayloadType::Message(_) => {
-                error!("Core client received unexpected message");
+                error!("Master Client received unexpected message");
             }
         }
         Ok(())
     }
 
     pub async fn handle(&mut self) -> Result<()> {
-        let commands: CommandsManager<R> = CommandsManager::new();
         loop {
             match self.wtp_client.read_packet().await? {
                 InPayloadType::Action(action) => {
@@ -69,14 +77,13 @@ where
                 }
                 InPayloadType::Message(message) => {
                     debug!("Client received message: {}", message.message);
-                    commands
-                        .commands
-                        .get(&message.message)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("Could not find command! {}", message.message)
-                        })?
-                        .execute(self, "test")
-                        .await?;
+                    if message.message.starts_with("NEW") {
+                        tokio::spawn(async move {
+                            let mut core_client = CoreClient::new(IP).await.expect("Client crashed!");
+                            core_client.register().await.expect("Could not register client!");
+                            core_client.handle().await.expect("Handler crashed!");
+                        });
+                    }
                 }
             }
         }
