@@ -1,16 +1,16 @@
 use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
-use crate::config::{UUID};
+use crate::config::UUID;
 use anyhow::Result;
-use rustls_pki_types::ServerName;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
 use whoami::fallible::{hostname, username};
+
+use super::net::tls::tls_stream;
 
 pub(crate) struct CoreClient<R>
 where
@@ -28,28 +28,8 @@ impl CoreClient<TcpStream> {
 }
 impl CoreClient<TlsStream<TcpStream>> {
     pub async fn new_tls(ip: &str) -> Result<Self> {
-        let mut root_store = rustls::RootCertStore::empty();
-        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-        let config = rustls::ClientConfig::builder()
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
-
-        let address_without_port = match ip.split_once(':') {
-            Some((address_without_port, _)) => address_without_port,
-            None => ip,
-        };
-
-        let stream = TcpStream::connect(ip).await?;
-
-        let connector = tokio_rustls::TlsConnector::from(Arc::new(config));
-        let tls_stream = connector
-            .connect(
-                ServerName::try_from(address_without_port)?.to_owned(),
-                stream,
-            )
-            .await?;
         Ok(CoreClient {
-            wtp_client: WtpClient::new(tls_stream),
+            wtp_client: WtpClient::new(tls_stream(ip).await?),
         })
     }
 }
