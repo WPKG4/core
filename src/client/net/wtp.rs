@@ -25,7 +25,7 @@ where
         }
     }
 
-    pub async fn send_packet(&mut self, payload_type: OutPayloadType) -> Result<InPayloadType> {
+    pub async fn send_packet(&mut self, payload_type: OutPayloadType) -> Result<()> {
         let payload_data = match payload_type {
             OutPayloadType::Action(payload) => payload.to_string(),
             OutPayloadType::Message(payload) => payload.to_string(),
@@ -35,9 +35,9 @@ where
             .write_all(payload_data.as_bytes())
             .await
             .context("Failed to send payload")?;
-        debug!("Sent payload: {}", payload_data);
+        debug!("Sent payload: {}", payload_data.replace("\n", "\\n"));
 
-        self.read_packet().await
+        Ok(())
     }
 
     pub async fn read_packet(&mut self) -> Result<InPayloadType> {

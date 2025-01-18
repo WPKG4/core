@@ -9,14 +9,14 @@ use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
 use whoami::fallible::{hostname, username};
-
-use super::net::tls::tls_stream;
+use crate::client::net::tls::tls_stream;
+use crate::commands::CommandsManager;
 
 pub(crate) struct CoreClient<R>
 where
     R: AsyncRead + AsyncWrite + Unpin,
 {
-    wtp_client: WtpClient<R>,
+    pub(crate) wtp_client: WtpClient<R>,
 }
 
 impl CoreClient<TcpStream> {
@@ -35,11 +35,10 @@ impl CoreClient<TlsStream<TcpStream>> {
 }
 impl<R> CoreClient<R>
 where
-    R: AsyncRead + AsyncWrite + Unpin,
+    R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     pub async fn register(&mut self) -> Result<()> {
-        let resp = self
-            .wtp_client
+        self.wtp_client
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
@@ -55,7 +54,7 @@ where
                 ]),
             }))
             .await?;
-        match resp {
+        match self.wtp_client.read_packet().await? {
             InPayloadType::Action(action) => {
                 if action.error == "OK" {
                     info!("Client registered successfully");
@@ -71,6 +70,7 @@ where
     }
 
     pub async fn handle(&mut self) -> Result<()> {
+        let commands: CommandsManager<R> = CommandsManager::new();
         loop {
             match self.wtp_client.read_packet().await? {
                 InPayloadType::Action(action) => {
@@ -78,6 +78,14 @@ where
                 }
                 InPayloadType::Message(message) => {
                     debug!("Client received message: {}", message.message);
+                    commands
+                        .commands
+                        .get(&message.message)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("Could not find command! {}", message.message)
+                        })?
+                        .execute(self, "test")
+                        .await?;
                 }
             }
         }

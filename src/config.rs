@@ -10,18 +10,14 @@ use uuid::Uuid;
 lazy_static! {
     pub static ref INSTALL_PATH: PathBuf = {
         match cfg!(debug_assertions) {
-            false => {
-                match option_env!("INSTALL_PATH") {
-                    Some(x) => PathBuf::from(x),
-                    None => match dirs::data_local_dir() {
-                        Some(x) => x.join("WPKG4"),
-                        None => PathBuf::from(""),
-                    },
-                }
-            }
-            true => {
-                PathBuf::from("./workdir")
-            }
+            false => match option_env!("INSTALL_PATH") {
+                Some(x) => PathBuf::from(x),
+                None => match dirs::data_local_dir() {
+                    Some(x) => x.join("WPKG4"),
+                    None => PathBuf::from(""),
+                },
+            },
+            true => PathBuf::from("./workdir"),
         }
     };
     pub static ref UUID: Uuid = Uuid::new_v4();
