@@ -1,9 +1,11 @@
-use crate::config::{INSTALL_PATH, IP};
-use figlet_rs::FIGfont;
 use std::env;
 use std::error::Error;
+
+use figlet_rs::FIGfont;
 use tracing::debug;
+
 use crate::client::masterclient::MasterClient;
+use crate::config::{INSTALL_PATH, IP};
 
 mod client;
 mod commands;
@@ -18,9 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
 
-    if env::current_exe()?
-        .parent()
-        .ok_or("Could not get current executable path!")?
+    if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
         != INSTALL_PATH.as_path()
         && !cfg!(debug_assertions)
     {

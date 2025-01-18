@@ -1,7 +1,9 @@
-use crate::client::coreclient::CoreClient;
-use async_trait::async_trait;
 use std::collections::HashMap;
+
+use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
+
+use crate::client::coreclient::CoreClient;
 
 pub mod hello;
 
@@ -28,10 +30,10 @@ where
 {
     pub fn new() -> Self {
         let mut commands: HashMap<String, Box<dyn Command<R>>> = HashMap::new();
-        
+
         // Command definition
         commands.insert(hello::NAME.to_string(), Box::new(hello::Msg));
-        
+
         Self { commands }
     }
 }

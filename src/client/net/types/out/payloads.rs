@@ -1,6 +1,7 @@
-use crate::client::net::types::shared::MessagePayload;
 use std::collections::HashMap;
 use std::fmt;
+
+use crate::client::net::types::shared::MessagePayload;
 
 pub enum OutPayloadType {
     Action(OutActionPayload),

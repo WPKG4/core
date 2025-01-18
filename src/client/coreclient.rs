@@ -1,15 +1,17 @@
-use crate::client::net::types::r#in::payloads::InPayloadType;
-use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
-use crate::client::net::wtp::WtpClient;
-use crate::config::UUID;
-use anyhow::Result;
 use std::collections::HashMap;
+
+use anyhow::Result;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
+
 use crate::client::net::tls::tls_stream;
+use crate::client::net::types::r#in::payloads::InPayloadType;
+use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::wtp::WtpClient;
 use crate::commands::CommandsManager;
+use crate::config::UUID;
 
 pub(crate) struct CoreClient<R>
 where
@@ -20,16 +22,12 @@ where
 
 impl CoreClient<TcpStream> {
     pub async fn new(ip: &str) -> Result<Self> {
-        Ok(CoreClient {
-            wtp_client: WtpClient::new(TcpStream::connect(ip).await?),
-        })
+        Ok(CoreClient { wtp_client: WtpClient::new(TcpStream::connect(ip).await?) })
     }
 }
 impl CoreClient<TlsStream<TcpStream>> {
     pub async fn new_tls(ip: &str) -> Result<Self> {
-        Ok(CoreClient {
-            wtp_client: WtpClient::new(tls_stream(ip).await?),
-        })
+        Ok(CoreClient { wtp_client: WtpClient::new(tls_stream(ip).await?) })
     }
 }
 impl<R> CoreClient<R>
@@ -40,9 +38,7 @@ where
         self.wtp_client
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
-                parameters: HashMap::from([
-                    ("uuid".to_string(), UUID.to_string())
-                ]),
+                parameters: HashMap::from([("uuid".to_string(), UUID.to_string())]),
             }))
             .await?;
         match self.wtp_client.read_packet().await? {

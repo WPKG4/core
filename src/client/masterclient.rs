@@ -1,16 +1,18 @@
-use crate::client::net::types::r#in::payloads::InPayloadType;
-use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
-use crate::client::net::wtp::WtpClient;
-use crate::config::{IP, UUID};
-use anyhow::Result;
 use std::collections::HashMap;
+
+use anyhow::Result;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
 use whoami::fallible::{hostname, username};
+
 use crate::client::coreclient::CoreClient;
 use crate::client::net::tls::tls_stream;
+use crate::client::net::types::r#in::payloads::InPayloadType;
+use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::wtp::WtpClient;
+use crate::config::{IP, UUID};
 
 pub(crate) struct MasterClient<R>
 where
@@ -21,16 +23,12 @@ where
 
 impl MasterClient<TcpStream> {
     pub async fn new(ip: &str) -> Result<Self> {
-        Ok(MasterClient {
-            wtp_client: WtpClient::new(TcpStream::connect(ip).await?),
-        })
+        Ok(MasterClient { wtp_client: WtpClient::new(TcpStream::connect(ip).await?) })
     }
 }
 impl MasterClient<TlsStream<TcpStream>> {
     pub async fn new_tls(ip: &str) -> Result<Self> {
-        Ok(MasterClient {
-            wtp_client: WtpClient::new(tls_stream(ip).await?),
-        })
+        Ok(MasterClient { wtp_client: WtpClient::new(tls_stream(ip).await?) })
     }
 }
 impl<R> MasterClient<R>
@@ -43,14 +41,8 @@ where
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
                     ("uuid".to_string(), UUID.to_string()),
-                    (
-                        "user".to_string(),
-                        username().unwrap_or("UNKNOWN".to_string()),
-                    ),
-                    (
-                        "hostname".to_string(),
-                        hostname().unwrap_or("UNKNOWN".to_string()),
-                    ),
+                    ("user".to_string(), username().unwrap_or("UNKNOWN".to_string())),
+                    ("hostname".to_string(), hostname().unwrap_or("UNKNOWN".to_string())),
                 ]),
             }))
             .await?;
@@ -79,7 +71,8 @@ where
                     debug!("Client received message: {}", message.message);
                     if message.message.starts_with("NEW") {
                         tokio::spawn(async move {
-                            let mut core_client = CoreClient::new(IP).await.expect("Client crashed!");
+                            let mut core_client =
+                                CoreClient::new(IP).await.expect("Client crashed!");
                             core_client.register().await.expect("Could not register client!");
                             core_client.handle().await.expect("Handler crashed!");
                         });
