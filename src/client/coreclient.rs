@@ -11,8 +11,7 @@ use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
 use crate::commands::CommandsManager;
-use crate::config::UUID;
-
+use crate::config;
 pub(crate) struct CoreClient<R>
 where
     R: AsyncRead + AsyncWrite + Unpin,
@@ -37,16 +36,23 @@ where
     pub async fn register(&mut self) -> Result<()> {
         self.wtp_client
             .send_packet(OutPayloadType::Action(OutActionPayload {
-                name: "core-init".to_string(),
-                parameters: HashMap::from([("uuid".to_string(), UUID.to_string())]),
+                name: "new-socket".to_string(),
+                parameters: HashMap::from([(
+                    "uuid".to_string(),
+                    config::get_config("UUID").await?,
+                )]),
             }))
             .await?;
         match self.wtp_client.read_packet().await? {
             InPayloadType::Action(action) => {
                 if action.error == "OK" {
-                    info!("Core client registered successfully");
+                    info!("Client socket registered successfully");
                 } else {
-                    error!("Core client could not register successfully: {}", action.message);
+                    error!("Could not register Client Socket successfully: {}", action.message);
+                    return Err(anyhow::anyhow!(
+                        "Could not register Client Socket successfully: {}",
+                        action.message
+                    ));
                 }
             }
             InPayloadType::Message(_) => {

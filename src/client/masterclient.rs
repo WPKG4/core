@@ -12,7 +12,7 @@ use crate::client::net::tls::tls_stream;
 use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
-use crate::config::{IP, UUID};
+use crate::config;
 
 pub(crate) struct MasterClient<R>
 where
@@ -40,7 +40,7 @@ where
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
-                    ("uuid".to_string(), UUID.to_string()),
+                    ("uuid".to_string(), config::get_config("UUID").await?),
                     ("user".to_string(), username().unwrap_or("UNKNOWN".to_string())),
                     ("hostname".to_string(), hostname().unwrap_or("UNKNOWN".to_string())),
                 ]),
@@ -52,6 +52,10 @@ where
                     info!("Master Client registered successfully");
                 } else {
                     error!("Master Client could not register successfully: {}", action.message);
+                    return Err(anyhow::anyhow!(
+                        "Master Client could not register successfully: {}",
+                        action.message
+                    ));
                 }
             }
             InPayloadType::Message(_) => {
@@ -72,7 +76,7 @@ where
                     if message.message.starts_with("NEW") {
                         tokio::spawn(async move {
                             let mut core_client =
-                                CoreClient::new(IP).await.expect("Client crashed!");
+                                CoreClient::new(config::IP).await.expect("Client crashed!");
                             core_client.register().await.expect("Could not register client!");
                             core_client.handle().await.expect("Handler crashed!");
                         });

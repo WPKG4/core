@@ -21,7 +21,6 @@ lazy_static! {
             true => PathBuf::from("./workdir"),
         }
     };
-    pub static ref UUID: Uuid = Uuid::new_v4();
     pub static ref PING_INTERVAL: Duration = Duration::from_secs(5 * 60);
     static ref CONFIG: RwLock<HashMap<String, String>> = RwLock::new(load_default_config());
 }
