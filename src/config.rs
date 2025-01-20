@@ -21,6 +21,10 @@ lazy_static! {
             true => PathBuf::from("./workdir"),
         }
     };
+    pub static ref UPDATE_URL: String = match option_env!("UPDATE_URL") {
+        Some(x) => x.to_string(),
+        None => "https://cdn.wpkg.ovh".to_string()
+    };
     pub static ref PING_INTERVAL: Duration = Duration::from_secs(5 * 60);
     static ref CONFIG: RwLock<HashMap<String, String>> = RwLock::new(load_default_config());
 }
@@ -59,7 +63,7 @@ pub async fn save_config() -> Result<()> {
     let config = CONFIG.read().await.clone();
     let toml_string = toml::to_string(&config)?;
     fs::write(INSTALL_PATH.join("config.toml"), toml_string)?;
-
+    
     Ok(())
 }
 

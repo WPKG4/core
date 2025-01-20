@@ -12,6 +12,7 @@ mod commands;
 mod config;
 mod install;
 mod logger;
+mod updater;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

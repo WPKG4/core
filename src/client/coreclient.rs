@@ -31,7 +31,7 @@ impl CoreClient<TlsStream<TcpStream>> {
 }
 impl<R> CoreClient<R>
 where
-    R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    R: AsyncRead + AsyncWrite + Unpin + Send,
 {
     pub async fn register(&mut self) -> Result<()> {
         self.wtp_client
