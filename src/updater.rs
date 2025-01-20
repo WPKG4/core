@@ -11,7 +11,7 @@ struct UpdateInfo {
 }
 
 async fn get_update() -> Result<UpdateInfo> {
-    let endpoint = format!("{}/api/core/stable/windows/x64/json", UPDATE_URL.to_string());
+    let endpoint = format!("{}/api/core/stable/{}/{}/json", UPDATE_URL.to_string(), std::env::consts::OS, std::env::consts::ARCH);
     let response = reqwest::get(endpoint).await?;
     let update_info: UpdateInfo = response.json().await?;
     Ok(update_info)
