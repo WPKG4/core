@@ -5,7 +5,6 @@ use figlet_rs::FIGfont;
 use tracing::debug;
 
 use crate::client::masterclient::MasterClient;
-use crate::config::INSTALL_PATH;
 
 mod client;
 mod commands;
@@ -21,20 +20,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
 
-    if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
-        != INSTALL_PATH.as_path()
-        && !cfg!(debug_assertions)
-    {
-        install::install().await?;
+    debug!("Executable: {}, Version: {}, Install path: {}", env::current_exe()?.display(), env!("CARGO_PKG_VERSION"), config::INSTALL_PATH.display());
+    if config::load_config().await.is_ok() && config::get_config("update-mode").await.unwrap_or("false".to_string()).eq("true") {
+        install::update_mode().await?;
+    } else if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
+        != config::INSTALL_PATH.as_path() && !cfg!(debug_assertions) {
+        install::install(env::current_exe()?).await?;
     }
 
-    config::set_config("test", "test_config123").await;
-    config::save_config().await?;
-    config::load_config().await?;
-    debug!("{}", updater::get_update().await?.version);
-    debug!("Config test value: {}", config::get_config("test").await?);
+    debug!("Starting updater");
+    tokio::spawn(async move { updater::start_updater().await });
 
-    let mut client = MasterClient::new(config::get_config("IP").await?.as_str()).await?;
+    let mut client = MasterClient::new(&config::get_config("ip").await?).await?;
     client.register().await?;
     client.handle().await?;
 

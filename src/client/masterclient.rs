@@ -40,7 +40,7 @@ where
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
-                    ("uuid".to_string(), config::get_config("UUID").await?),
+                    ("uuid".to_string(), config::get_config("uuid").await?),
                     ("user".to_string(), username().unwrap_or("UNKNOWN".to_string())),
                     ("hostname".to_string(), hostname().unwrap_or("UNKNOWN".to_string())),
                 ]),
@@ -76,7 +76,7 @@ where
                     if message.message.starts_with("NEW") {
                         tokio::spawn(async move {
                             let mut core_client =
-                                CoreClient::new(config::get_config("IP").await.expect("Could not get IP from config").as_str()).await.expect("Client crashed!");
+                                CoreClient::new(&config::get_config("ip").await.expect("Could not get IP Addres!")).await.expect("Client crashed!");
                             core_client.register().await.expect("Could not register client!");
                             core_client.handle().await.expect("Handler crashed!");
                         });
