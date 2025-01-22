@@ -30,6 +30,7 @@ pub async fn update_mode() -> Result<()> {
 
     debug!("Moving/Replacing executable with updated one");
     let current_executable = env::current_exe()?;
+    let _ = fs::remove_file(config::BINARY_FILE.as_path()).await;
     fs::copy(current_executable, config::BINARY_FILE.as_path()).await?;
     fs::set_permissions(config::BINARY_FILE.as_path(), Permissions::from_mode(0o755)).await?;
 

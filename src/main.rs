@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
 
-    debug!("Executable: {}, Install path: {}", env::current_exe()?.display(), config::INSTALL_PATH.display());
+    debug!("Executable: {}, Version: {}, Install path: {}", env::current_exe()?.display(), env!("CARGO_PKG_VERSION"), config::INSTALL_PATH.display());
     if config::load_config().await.is_ok() && config::get_config("update-mode").await.unwrap_or("false".to_string()).eq("true") {
         install::update_mode().await?;
     } else if env::current_exe()?.parent().ok_or("Could not get current executable path!")?

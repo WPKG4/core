@@ -52,6 +52,7 @@ pub async fn start_updater() {
 
                             let save_path = config::UPDATER_BINARY_FILE.clone();
 
+                            let _ = fs::remove_file(save_path.as_path()).await;
                             if let Err(err) = fs::write(save_path.as_path(), binary).await {
                                 error!("Failed to save binary: {}", err);
                                 break;
