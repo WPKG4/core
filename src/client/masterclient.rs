@@ -76,7 +76,7 @@ where
                     if message.message.starts_with("NEW") {
                         tokio::spawn(async move {
                             let mut core_client =
-                                CoreClient::new(config::IP).await.expect("Client crashed!");
+                                CoreClient::new(&config::get_config("ip").await.unwrap_or(config::IP.to_owned())).await.expect("Client crashed!");
                             core_client.register().await.expect("Could not register client!");
                             core_client.handle().await.expect("Handler crashed!");
                         });

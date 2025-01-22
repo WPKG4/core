@@ -5,7 +5,7 @@ use tracing::{debug, error};
 
 use std::{env::consts, fs::Permissions, os::unix::fs::PermissionsExt};
 
-use crate::config::{self, UPDATE_URL};
+use crate::config;
 
 #[derive(Debug, Deserialize)]
 struct UpdateInfo {
@@ -15,7 +15,7 @@ struct UpdateInfo {
 }
 
 async fn get_update() -> Result<UpdateInfo> {
-    let endpoint = format!("{}/api/core/stable/{}/{}/json", UPDATE_URL.to_string(), consts::OS, consts::ARCH);
+    let endpoint = format!("{}/api/core/stable/{}/{}/json", config::UPDATE_URL.to_string(), consts::OS, consts::ARCH);
     debug!("Update info URL for this system: {}", endpoint);
     let response = reqwest::get(endpoint).await?;
     let update_info: UpdateInfo = response.json().await?;

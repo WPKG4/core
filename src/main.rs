@@ -1,9 +1,7 @@
 use std::env;
 use std::error::Error;
-use std::time::Duration;
 
 use figlet_rs::FIGfont;
-use tokio::time;
 use tracing::debug;
 
 use crate::client::masterclient::MasterClient;
@@ -33,13 +31,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     debug!("Starting updater");
     tokio::spawn(async move { updater::start_updater().await });
 
-    loop {
-        time::sleep(Duration::from_secs(5)).await;
-    }
+    let mut client = MasterClient::new(&config::get_config("ip").await?).await?;
+    client.register().await?;
+    client.handle().await?;
 
-    // let mut client = MasterClient::new(IP).await?;
-    // client.register().await?;
-    // client.handle().await?;
-
-    // Ok(())
+    Ok(())
 }

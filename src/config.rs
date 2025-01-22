@@ -22,15 +22,15 @@ lazy_static! {
         }
     };
     pub static ref BINARY_FILE: PathBuf = INSTALL_PATH.join(if cfg!(windows) {
-        "core-rs.exe"
+        "wpkg4.exe"
     } else {
-        "core-rs"
+        "wpkg4"
     });
 
     pub static ref UPDATER_BINARY_FILE: PathBuf = INSTALL_PATH.join(if cfg!(windows) {
-        "core-rs-updater.exe"
+        "wpkg4-updater.exe"
     } else {
-        "core-rs-updater"
+        "wpkg4-updater"
     });
     pub static ref UPDATE_URL: String = match option_env!("UPDATE_URL") {
         Some(x) => x.to_string(),
@@ -81,9 +81,9 @@ pub async fn save_config() -> Result<()> {
 
 pub fn load_default_config() -> HashMap<String, String> {
     HashMap::from([
-        ("IP".to_string(), "127.0.0.1:5000".to_string()),
-        ("UUID".to_string(), Uuid::new_v4().to_string()),
-        ("GROUP".to_string(), "MASTER".to_string()),
+        ("ip".to_string(), IP.to_string()),
+        ("uuid".to_string(), Uuid::new_v4().to_string()),
+        ("group".to_string(), "MASTER".to_string()),
         ("update-mode".to_string(), "false".to_string()),
     ])
 }
