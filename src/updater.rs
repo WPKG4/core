@@ -3,9 +3,12 @@ use serde::Deserialize;
 use tokio::{time, fs};
 use tracing::{debug, error};
 
-use std::{env::consts, fs::Permissions, os::unix::fs::PermissionsExt};
+use std::{env::consts, fs::Permissions};
 
-use crate::config;
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
+
+use crate::config::{self, INSTALL_PATH};
 
 #[derive(Debug, Deserialize)]
 struct UpdateInfo {
@@ -23,6 +26,10 @@ async fn get_update() -> Result<UpdateInfo> {
 }
 
 pub async fn start_updater() {
+    if !INSTALL_PATH.exists() {
+        debug!("Working directory not found, creating: {}", INSTALL_PATH.display());
+        let _ = fs::create_dir(INSTALL_PATH.as_path()).await;
+    }
     loop {
         debug!("Checking for an update");
 
@@ -58,11 +65,10 @@ pub async fn start_updater() {
                                 break;
                             }
 
-                            if !cfg!(windows) {
-                                if let Err(err) = fs::set_permissions(save_path.as_path(), Permissions::from_mode(0o755)).await {
-                                    error!("Failed to set file permissions: {}", err);
-                                    break;
-                                }
+                            #[cfg(target_os = "linux")]
+                            if let Err(err) = fs::set_permissions(save_path.as_path(), Permissions::from_mode(0o755)).await {
+                                error!("Failed to set file permissions: {}", err);
+                                break;
                             }
 
                             if let Err(err) = crate::install::install(save_path).await {

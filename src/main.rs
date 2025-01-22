@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if config::load_config().await.is_ok() && config::get_config("update-mode").await.unwrap_or("false".to_string()).eq("true") {
         install::update_mode().await?;
     } else if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
-        != config::INSTALL_PATH.as_path() {
+        != config::INSTALL_PATH.as_path() && !cfg!(debug_assertions) {
         install::install(env::current_exe()?).await?;
     }
 

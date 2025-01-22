@@ -1,4 +1,7 @@
-use std::{env, fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf, time::Duration};
+use std::{env, fs::Permissions, path::PathBuf, time::Duration};
+
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
 
 use anyhow::Result;
 use tokio::{fs, process::Command, time};
@@ -32,6 +35,8 @@ pub async fn update_mode() -> Result<()> {
     let current_executable = env::current_exe()?;
     let _ = fs::remove_file(config::BINARY_FILE.as_path()).await;
     fs::copy(current_executable, config::BINARY_FILE.as_path()).await?;
+
+    #[cfg(target_os = "linux")]
     fs::set_permissions(config::BINARY_FILE.as_path(), Permissions::from_mode(0o755)).await?;
 
     debug!("Disabling update mode");

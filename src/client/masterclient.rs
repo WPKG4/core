@@ -40,7 +40,7 @@ where
             .send_packet(OutPayloadType::Action(OutActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
-                    ("uuid".to_string(), config::get_config("UUID").await?),
+                    ("uuid".to_string(), config::get_config("uuid").await?),
                     ("user".to_string(), username().unwrap_or("UNKNOWN".to_string())),
                     ("hostname".to_string(), hostname().unwrap_or("UNKNOWN".to_string())),
                 ]),

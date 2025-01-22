@@ -39,7 +39,7 @@ where
                 name: "new-socket".to_string(),
                 parameters: HashMap::from([(
                     "uuid".to_string(),
-                    config::get_config("UUID").await?,
+                    config::get_config("uuid").await?,
                 )]),
             }))
             .await?;
