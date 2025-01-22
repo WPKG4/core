@@ -29,6 +29,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     debug!("Starting updater");
+
+    #[cfg(not(debug_assertions))]
     tokio::spawn(async move { updater::start_updater().await });
 
     let mut client = MasterClient::new(&config::get_config("ip").await?).await?;
