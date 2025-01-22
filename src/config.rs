@@ -69,10 +69,8 @@ pub async fn save_config() -> Result<()> {
 
 pub fn load_default_config() -> HashMap<String, String> {
     HashMap::from([
-        ("IP".to_string(), "127.0.0.1:5000".to_string()),
+        ("IP".to_string(), "192.168.1.165:5000".to_string()),
         ("UUID".to_string(), Uuid::new_v4().to_string()),
         ("GROUP".to_string(), "MASTER".to_string()),
     ])
 }
-
-pub static IP: &str = "127.0.0.1:5000";
