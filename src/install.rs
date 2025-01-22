@@ -1,24 +1,44 @@
-use std::{env, fs};
+use std::{env, fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf, time::Duration};
 
 use anyhow::Result;
-use tokio::process::Command;
+use tokio::{fs, process::Command, time};
 use tracing::debug;
 
-use crate::config;
-use crate::config::INSTALL_PATH;
+use crate::config::{self, INSTALL_PATH};
 
-pub async fn install() -> Result<()> {
+pub async fn install(binary_path: PathBuf) -> Result<()> {
     if !INSTALL_PATH.exists() {
         debug!("Working directory not found, creating: {}", INSTALL_PATH.display());
-        fs::create_dir(INSTALL_PATH.as_path())?;
+        fs::create_dir(INSTALL_PATH.as_path()).await?;
     }
-    debug!("Installing: {}", INSTALL_PATH.display());
-    debug!("Saving configuration");
+
+    debug!("Installing to {}", INSTALL_PATH.display());
+
+    debug!("Enabling update mode and saving configuration");
+    config::set_config("update-mode", "true").await;
     config::save_config().await?;
-    debug!("Copying binary into working directory");
-    let executable_path = INSTALL_PATH.join(if cfg!(windows) { "core-rs.exe" } else { "core-rs" });
-    fs::copy(env::current_exe()?, executable_path.clone())?;
-    debug!("Restarting: {}", executable_path.display());
-    Command::new(executable_path).spawn()?;
+
+    debug!("Running in update mode");
+    Command::new(binary_path).spawn()?;
+
+    std::process::exit(0);
+}
+
+pub async fn update_mode() -> Result<()> {
+    debug!("Running in update mode");
+    time::sleep(Duration::from_millis(100)).await;
+
+    debug!("Moving/Replacing executable with updated one");
+    let current_executable = env::current_exe()?;
+    fs::copy(current_executable, config::BINARY_FILE.as_path()).await?;
+    fs::set_permissions(config::BINARY_FILE.as_path(), Permissions::from_mode(0o755)).await?;
+
+    debug!("Disabling update mode");
+    config::set_config("update-mode", "false").await;
+    config::save_config().await?;
+
+    debug!("Running updated executable in regular mode");
+    Command::new(config::BINARY_FILE.as_path()).spawn()?;
+
     std::process::exit(0);
 }

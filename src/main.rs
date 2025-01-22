@@ -1,11 +1,12 @@
 use std::env;
 use std::error::Error;
+use std::time::Duration;
 
 use figlet_rs::FIGfont;
+use tokio::time;
 use tracing::debug;
 
 use crate::client::masterclient::MasterClient;
-use crate::config::{INSTALL_PATH, IP};
 
 mod client;
 mod commands;
@@ -21,21 +22,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let figure = standard_font.convert("WPKG4 - szybkie i zajebiste");
     println!("{}", figure.unwrap());
 
-    if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
-        != INSTALL_PATH.as_path()
-        && !cfg!(debug_assertions)
-    {
-        install::install().await?;
+    debug!("Executable: {}, Install path: {}", env::current_exe()?.display(), config::INSTALL_PATH.display());
+    if config::load_config().await.is_ok() && config::get_config("update-mode").await.unwrap_or("false".to_string()).eq("true") {
+        install::update_mode().await?;
+    } else if env::current_exe()?.parent().ok_or("Could not get current executable path!")?
+        != config::INSTALL_PATH.as_path() {
+        install::install(env::current_exe()?).await?;
     }
 
-    config::set_config("test", "test_config123").await;
-    config::save_config().await?;
-    config::load_config().await?;
-    debug!("Config test value: {}", config::get_config("test").await?);
+    debug!("Starting updater");
+    tokio::spawn(async move { updater::start_updater().await });
 
-    let mut client = MasterClient::new(IP).await?;
-    client.register().await?;
-    client.handle().await?;
+    loop {
+        time::sleep(Duration::from_secs(5)).await;
+    }
 
-    Ok(())
+    // let mut client = MasterClient::new(IP).await?;
+    // client.register().await?;
+    // client.handle().await?;
+
+    // Ok(())
 }
