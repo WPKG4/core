@@ -1,12 +1,12 @@
-use anyhow::Result;
-use serde::Deserialize;
-use tokio::{time, fs};
-use tracing::{debug, error};
-
-use std::{env::consts, fs::Permissions};
-
+use std::env::consts;
+use std::fs::Permissions;
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::PermissionsExt;
+
+use anyhow::Result;
+use serde::Deserialize;
+use tokio::{fs, time};
+use tracing::{debug, error};
 
 use crate::config::{self, INSTALL_PATH};
 
@@ -18,7 +18,12 @@ struct UpdateInfo {
 }
 
 async fn get_update() -> Result<UpdateInfo> {
-    let endpoint = format!("{}/api/core/stable/{}/{}/json", config::UPDATE_URL.to_string(), consts::OS, consts::ARCH);
+    let endpoint = format!(
+        "{}/api/core/stable/{}/{}/json",
+        config::UPDATE_URL.to_string(),
+        consts::OS,
+        consts::ARCH
+    );
     debug!("Update info URL for this system: {}", endpoint);
     let response = reqwest::get(endpoint).await?;
     let update_info: UpdateInfo = response.json().await?;
@@ -37,11 +42,14 @@ pub async fn start_updater() {
             Ok(update_info) => {
                 if !env!("CARGO_PKG_VERSION").eq(&update_info.version) {
                     debug!("Found an update; version {}", &update_info.version);
-                    
+
                     let mut tried = 0;
                     while tried < 3 {
                         debug!("Try {}/3: Downloading update", tried + 1);
-                        let Ok(response) = reqwest::get(config::UPDATE_URL.clone() + "/files" + &update_info.path).await else {
+                        let Ok(response) =
+                            reqwest::get(config::UPDATE_URL.clone() + "/files" + &update_info.path)
+                                .await
+                        else {
                             error!("Failed to fetch the update");
                             break;
                         };
@@ -52,8 +60,11 @@ pub async fn start_updater() {
                         };
 
                         let digest = sha256::digest(binary.to_vec());
-                        debug!("File checksum: {}, Required checksum: {}", &digest, &update_info.checksum);
-                        
+                        debug!(
+                            "File checksum: {}, Required checksum: {}",
+                            &digest, &update_info.checksum
+                        );
+
                         if digest.eq(&update_info.checksum) {
                             debug!("Update downloaded");
 
@@ -66,7 +77,12 @@ pub async fn start_updater() {
                             }
 
                             #[cfg(target_os = "linux")]
-                            if let Err(err) = fs::set_permissions(save_path.as_path(), Permissions::from_mode(0o755)).await {
+                            if let Err(err) = fs::set_permissions(
+                                save_path.as_path(),
+                                Permissions::from_mode(0o755),
+                            )
+                            .await
+                            {
                                 error!("Failed to set file permissions: {}", err);
                                 break;
                             }
@@ -84,8 +100,8 @@ pub async fn start_updater() {
                         error!("Tried 3 times of 3. Checksum mismatched.");
                     }
                 }
-            },
-            Err(err) => error!("Updater failed to check for an update: {}", err)
+            }
+            Err(err) => error!("Updater failed to check for an update: {}", err),
         }
 
         time::sleep(config::PING_INTERVAL.clone()).await;

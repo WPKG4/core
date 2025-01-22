@@ -1,10 +1,13 @@
-use std::{env, fs::Permissions, path::PathBuf, time::Duration};
-
+use std::env;
+use std::fs::Permissions;
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::Result;
-use tokio::{fs, process::Command, time};
+use tokio::process::Command;
+use tokio::{fs, time};
 use tracing::debug;
 
 use crate::config::{self, INSTALL_PATH};
