@@ -2,8 +2,7 @@ use std::fmt;
 
 #[derive(Clone)]
 pub struct MessagePayload {
-    pub length: usize,
-    pub message: String,
+    pub message: String
 }
 
 impl fmt::Display for MessagePayload {

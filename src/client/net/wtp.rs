@@ -94,7 +94,6 @@ where
         Ok(InPayloadType::Action(InActionPayload {
             error: error_code.to_string(),
             name: action_name.to_string(),
-            message_length: len,
             message,
         }))
     }
@@ -107,7 +106,7 @@ where
         let message = self.read_exact_bytes(len).await?;
         info!("<MESSAGE PAYLOAD>: len={}, message={}", len, message);
 
-        Ok(InPayloadType::Message(MessagePayload { length: len, message }))
+        Ok(InPayloadType::Message(MessagePayload { message }))
     }
 
     async fn read_exact_bytes(&mut self, len: usize) -> Result<String> {

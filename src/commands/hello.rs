@@ -23,7 +23,6 @@ where
         client
             .wtp_client
             .send_packet(OutPayloadType::Message(MessagePayload {
-                length: 5,
                 message: "world".to_string(),
             }))
             .await?;
