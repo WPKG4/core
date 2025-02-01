@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::from_utf8;
 
 use anyhow::Result;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -58,6 +59,9 @@ where
             InPayloadType::Message(_) => {
                 error!("Core client received unexpected message");
             }
+            InPayloadType::Binary(_) => {
+                error!("Core client received unexpected message");
+            }
         }
         Ok(())
     }
@@ -79,6 +83,9 @@ where
                         })?
                         .execute(self, "test")
                         .await?;
+                }
+                InPayloadType::Binary(binary_payload) => {
+                    debug!("Received binary payload! {}", from_utf8(&binary_payload.bytes)?)
                 }
             }
         }

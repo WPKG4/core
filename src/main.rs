@@ -31,13 +31,11 @@ async fn main() -> Result<()> {
         install::install(env::current_exe()?).await?;
     }
 
-    
     #[cfg(not(debug_assertions))]
     {
         debug!("Starting updater");
         tokio::spawn(async move { updater::start_updater().await });
     }
-
 
     start_client().await?;
 

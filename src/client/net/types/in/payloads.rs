@@ -1,8 +1,9 @@
-use crate::client::net::types::shared::MessagePayload;
+use crate::client::net::types::shared::{BinaryPayload, MessagePayload};
 
 pub enum InPayloadType {
     Action(InActionPayload),
     Message(MessagePayload),
+    Binary(BinaryPayload),
 }
 
 pub struct InActionPayload {

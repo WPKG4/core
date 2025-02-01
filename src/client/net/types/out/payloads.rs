@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::client::net::types::shared::MessagePayload;
+use crate::client::net::types::shared::{BinaryPayload, MessagePayload};
 
 pub enum OutPayloadType {
     Action(OutActionPayload),
     Message(MessagePayload),
+    Binary(BinaryPayload),
 }
 
 #[derive(Clone)]

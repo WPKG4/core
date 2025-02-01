@@ -8,7 +8,7 @@ use tracing::{debug, info};
 
 use crate::client::net::types::r#in::payloads::{InActionPayload, InPayloadType};
 use crate::client::net::types::out::payloads::OutPayloadType;
-use crate::client::net::types::shared::MessagePayload;
+use crate::client::net::types::shared::{BinaryPayload, MessagePayload};
 use crate::config::PING_INTERVAL;
 
 pub(crate) struct WtpClient<R: AsyncRead + AsyncWrite + Unpin> {
@@ -25,13 +25,20 @@ where
     }
 
     pub async fn send_packet(&mut self, payload_type: OutPayloadType) -> Result<()> {
-        let payload_data = match payload_type {
-            OutPayloadType::Action(payload) => payload.to_string(),
-            OutPayloadType::Message(payload) => payload.to_string(),
+        match payload_type {
+            OutPayloadType::Action(payload) => {
+                self.stream.write_all(payload.to_string().into_bytes().as_slice()).await?;
+            }
+            OutPayloadType::Message(payload) => {
+                self.stream.write_all(payload.to_string().into_bytes().as_slice()).await?;
+            }
+            OutPayloadType::Binary(payload) => {
+                self.stream
+                    .write_all(format!("b {}\n", payload.bytes.len()).into_bytes().as_slice())
+                    .await?;
+                self.stream.write_all(&payload.bytes).await?;
+            }
         };
-
-        self.stream.write_all(payload_data.as_bytes()).await.context("Failed to send payload")?;
-        debug!("Sent payload: {}", payload_data.replace("\n", "\\n"));
 
         Ok(())
     }
@@ -76,6 +83,7 @@ where
         match header.chars().next() {
             Some('a') => self.parse_action_payload(header).await,
             Some('m') => self.parse_message_payload(header).await,
+            Some('b') => self.parse_binary_payload(header).await,
             _ => Err(anyhow::anyhow!("Unimplemented header type")),
         }
     }
@@ -88,13 +96,14 @@ where
             parts.get(3).context("Missing length")?.parse::<usize>().context("Invalid length")?,
         );
 
-        let message = self.read_exact_bytes(len).await?;
+        let bytes = self.read_exact_bytes(len).await?;
+        let message = from_utf8(&bytes)?;
         info!("<ACTION PAYLOAD> {} \"{}\" len {}: {}", error_code, action_name, len, message);
 
         Ok(InPayloadType::Action(InActionPayload {
             error: error_code.to_string(),
             name: action_name.to_string(),
-            message,
+            message: message.to_string(),
         }))
     }
 
@@ -103,19 +112,29 @@ where
         let len =
             parts.get(1).context("Missing length")?.parse::<usize>().context("Invalid length")?;
 
-        let message = self.read_exact_bytes(len).await?;
+        let bytes = self.read_exact_bytes(len).await?;
+        let message = from_utf8(&bytes)?;
         info!("<MESSAGE PAYLOAD>: len={}, message={}", len, message);
 
-        Ok(InPayloadType::Message(MessagePayload { message }))
+        Ok(InPayloadType::Message(MessagePayload { message: message.to_string() }))
     }
 
-    async fn read_exact_bytes(&mut self, len: usize) -> Result<String> {
+    async fn parse_binary_payload(&mut self, header: &str) -> Result<InPayloadType> {
+        let parts: Vec<&str> = header.split_whitespace().collect();
+        let len =
+            parts.get(1).context("Missing length")?.parse::<usize>().context("Invalid length")?;
+
+        let bytes = self.read_exact_bytes(len).await?;
+        let message = from_utf8(&bytes)?;
+        info!("<BINARY PAYLOAD>: len={}, message={}", len, message);
+
+        Ok(InPayloadType::Binary(BinaryPayload { bytes }))
+    }
+
+    async fn read_exact_bytes(&mut self, len: usize) -> Result<Vec<u8>> {
         let mut buf = vec![0; len];
         self.stream.read_exact(&mut buf).await.context("Failed to read exact bytes")?;
 
-        let message = from_utf8(&buf).context("Failed to parse message")?;
-        debug!("Read exact bytes: {}", message);
-
-        Ok(message.to_string())
+        Ok(buf)
     }
 }

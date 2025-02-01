@@ -22,9 +22,7 @@ where
     async fn execute(&self, client: &mut CoreClient<R>, args: &str) -> anyhow::Result<()> {
         client
             .wtp_client
-            .send_packet(OutPayloadType::Message(MessagePayload {
-                message: "world".to_string(),
-            }))
+            .send_packet(OutPayloadType::Message(MessagePayload { message: "world".to_string() }))
             .await?;
         Ok(())
     }
