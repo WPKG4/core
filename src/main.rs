@@ -1,8 +1,8 @@
-use std::env;
+use std::{env, time::Duration};
 
 use anyhow::Result;
 use figlet_rs::FIGfont;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::client::masterclient::MasterClient;
 
@@ -37,9 +37,12 @@ async fn main() -> Result<()> {
         tokio::spawn(async move { updater::start_updater().await });
     }
 
-    start_client().await?;
-
-    Ok(())
+    loop {
+        if let Err(e) = start_client().await {
+            error!("Failed to connect: {}", e);
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    }
 }
 
 fn display_banner() {

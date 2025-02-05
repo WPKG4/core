@@ -29,6 +29,11 @@ lazy_static! {
         Some(x) => x.to_string(),
         None => "https://cdn.wpkg.ovh".to_string(),
     };
+    pub static ref IP: String = match option_env!("IP") {
+        Some(x) => x.to_string(),
+        None => "127.0.0.1:5000".to_string(),
+    };
+
     pub static ref PING_INTERVAL: Duration = Duration::from_secs(5 * 60);
     static ref CONFIG: RwLock<HashMap<String, String>> = RwLock::new(load_default_config());
 }
@@ -73,7 +78,7 @@ pub async fn save_config() -> Result<()> {
 
 pub fn load_default_config() -> HashMap<String, String> {
     HashMap::from([
-        ("ip".to_string(), "192.168.1.165:5000".to_string()),
+        ("ip".to_string(), IP.to_string()),
         ("uuid".to_string(), Uuid::new_v4().to_string()),
         ("group".to_string(), "MASTER".to_string()),
         ("update-mode".to_string(), "false".to_string()),
