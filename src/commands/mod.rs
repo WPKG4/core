@@ -6,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::client::coreclient::CoreClient;
 
 pub mod hello;
+pub mod command;
 
 #[async_trait]
 pub trait Command<R>: Send + Sync
