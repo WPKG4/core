@@ -12,7 +12,9 @@ use crate::client::coreclient::CoreClient;
 use crate::client::net::tls::tls_stream;
 use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::types::shared::MessagePayload;
 use crate::client::net::wtp::WtpClient;
+use crate::commands::command::CommandPayload;
 use crate::config;
 
 pub(crate) struct MasterClient<R>
@@ -77,17 +79,26 @@ where
                 }
                 InPayloadType::Message(message) => {
                     debug!("Client received message: {}", message.message);
-                    if message.message.starts_with("NEW") {
-                        tokio::spawn(async move {
-                            let mut core_client = CoreClient::new(
-                                &config::get_config("ip").await.expect("Could not get IP Addres!"),
-                            )
-                            .await
-                            .expect("Client crashed!");
-                            core_client.register().await.expect("Could not register client!");
-                            core_client.handle().await.expect("Handler crashed!");
-                        });
-                    }
+                    let command = CommandPayload::from(&message.message)?;
+                    match command.name.as_str() {
+                        "NEW" => {
+                            tokio::spawn(async move {
+                                let mut core_client = CoreClient::new(
+                                    &config::get_config("ip").await.expect("Could not get IP Addres!"),
+                                )
+                                    .await
+                                    .expect("Client crashed!");
+                                core_client.register().await.expect("Could not register client!");
+                                core_client.handle().await.expect("Handler crashed!");
+                            });
+                        }
+                        "DEL" => {
+                            todo!("Delete client")
+                        }
+                        &_ => {
+                            self.wtp_client.send_packet(OutPayloadType::Message(MessagePayload::from_str(format!("Command {}, not found!", command.name).as_str()))).await?;
+                        }
+                    };
                 }
                 InPayloadType::Binary(binary_payload) => {
                     debug!("Received binary payload! {}", from_utf8(&binary_payload.bytes)?)

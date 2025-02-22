@@ -14,7 +14,7 @@ where
     R: AsyncRead + AsyncWrite + Unpin,
 {
     fn help(&self) -> String;
-    async fn execute(&self, client: &mut CoreClient<R>, args: &str) -> anyhow::Result<()>;
+    async fn execute(&self, client: &mut CoreClient<R>, args: HashMap<String, String>) -> anyhow::Result<()>;
 }
 
 #[derive(Default)]

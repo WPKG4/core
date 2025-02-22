@@ -79,15 +79,14 @@ where
                 InPayloadType::Message(message) => {
                     debug!("Client received message: {}", message.message);
                     let command = CommandPayload::from(&message.message)?;
-                    debug!("command name: {}\ncommand params: {:?}", command.name, command.parameters);
 
                     commands
                         .commands
-                        .get(&message.message)
+                        .get(&command.name)
                         .ok_or_else(|| {
                             anyhow::anyhow!("Could not find command! {}", message.message)
                         })?
-                        .execute(self, "test")
+                        .execute(self, command.parameters)
                         .await?;
                 }
                 InPayloadType::Binary(binary_payload) => {

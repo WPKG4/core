@@ -116,7 +116,7 @@ where
         let message = from_utf8(&bytes)?;
         info!("<MESSAGE PAYLOAD>: len={}, message={}", len, message);
 
-        Ok(InPayloadType::Message(MessagePayload { message: message.to_string() }))
+        Ok(InPayloadType::Message(MessagePayload::from_str(message)))
     }
 
     async fn parse_binary_payload(&mut self, header: &str) -> Result<InPayloadType> {

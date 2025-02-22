@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -19,10 +21,10 @@ where
         "<message> - displays hello world".to_string()
     }
     #[allow(unused_variables)]
-    async fn execute(&self, client: &mut CoreClient<R>, args: &str) -> anyhow::Result<()> {
+    async fn execute(&self, client: &mut CoreClient<R>, args: HashMap<String, String>) -> anyhow::Result<()> {
         client
             .wtp_client
-            .send_packet(OutPayloadType::Message(MessagePayload { message: "world".to_string() }))
+            .send_packet(OutPayloadType::Message(MessagePayload::from_str(format!("world!, debug_params: {:?}", args).as_str())))
             .await?;
         Ok(())
     }
