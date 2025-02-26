@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
     logger::init();
     display_banner();
 
+    config::save_config().await?;
+
     debug!(
         "Executable: {}, Version: {}, Install path: {}",
         env::current_exe()?.display(),
