@@ -27,12 +27,18 @@ where
     pub async fn send_packet(&mut self, payload_type: OutPayloadType) -> Result<()> {
         match payload_type {
             OutPayloadType::Action(payload) => {
+                info!("<SENT> a {} {}", payload.name, payload.parameters.iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<String>>()
+                .join(" "));
                 self.stream.write_all(payload.to_string().into_bytes().as_slice()).await?;
             }
             OutPayloadType::Message(payload) => {
+                info!("<SENT> m [len {}]: {}", payload.message.len(), payload.message);
                 self.stream.write_all(payload.to_string().into_bytes().as_slice()).await?;
             }
             OutPayloadType::Binary(payload) => {
+                info!("<SENT> b [len {}]", payload.bytes.len());
                 self.stream
                     .write_all(format!("b {}\n", payload.bytes.len()).into_bytes().as_slice())
                     .await?;
@@ -69,7 +75,7 @@ where
                 Err(_) => {
                     if self.last_action.elapsed() >= *PING_INTERVAL {
                         self.stream.write_all(b"p\n").await.context("Failed to send ping")?;
-                        debug!("Sent 'p' to the server after 5 minutes of inactivity");
+                        debug!("<SENT> [PING]");
                         self.last_action = Instant::now();
                     }
                 }
@@ -78,7 +84,6 @@ where
         }
 
         let header = from_utf8(&header).context("Failed to parse header")?;
-        debug!("Parsed header: {}", header);
 
         match header.chars().next() {
             Some('a') => self.parse_action_payload(header).await,
@@ -98,7 +103,7 @@ where
 
         let bytes = self.read_exact_bytes(len).await?;
         let message = from_utf8(&bytes)?;
-        info!("<ACTION PAYLOAD> {} \"{}\" len {}: {}", error_code, action_name, len, message);
+        info!("<RECEIVE> a \"{}\" {} len {}: {}", action_name, error_code, len, message);
 
         Ok(InPayloadType::Action(InActionPayload {
             error: error_code.to_string(),
@@ -114,7 +119,7 @@ where
 
         let bytes = self.read_exact_bytes(len).await?;
         let message = from_utf8(&bytes)?;
-        info!("<MESSAGE PAYLOAD>: len={}, message={}", len, message);
+        info!("<RECEIVE> m [len {}]: {}", len, message);
 
         Ok(InPayloadType::Message(MessagePayload::from_str(message)))
     }
@@ -125,8 +130,7 @@ where
             parts.get(1).context("Missing length")?.parse::<usize>().context("Invalid length")?;
 
         let bytes = self.read_exact_bytes(len).await?;
-        let message = from_utf8(&bytes)?;
-        info!("<BINARY PAYLOAD>: len={}, message={}", len, message);
+        info!("<RECEIVE> b [len {}]", len);
 
         Ok(InPayloadType::Binary(BinaryPayload { bytes }))
     }
