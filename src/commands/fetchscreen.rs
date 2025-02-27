@@ -43,7 +43,7 @@ where
                     ))
                     .await?;
     
-                for chunk in jpeg.chunks_exact(*BINARY_SPLIT_SIZE) {
+                for chunk in jpeg.chunks(*BINARY_SPLIT_SIZE) {
                     client
                         .wtp_client
                         .send_packet(OutPayloadType::Binary(
