@@ -84,10 +84,12 @@ where
                         "NEW" => {
                             tokio::spawn(async move {
                                 let mut core_client = CoreClient::new(
-                                    &config::get_config("ip").await.expect("Could not get IP Addres!"),
+                                    &config::get_config("ip")
+                                        .await
+                                        .expect("Could not get IP Addres!"),
                                 )
-                                    .await
-                                    .expect("Client crashed!");
+                                .await
+                                .expect("Client crashed!");
                                 core_client.register().await.expect("Could not register client!");
                                 core_client.handle().await.expect("Handler crashed!");
                             });
@@ -96,7 +98,11 @@ where
                             todo!("Delete client")
                         }
                         &_ => {
-                            self.wtp_client.send_packet(OutPayloadType::Message(MessagePayload::from_str(format!("Command {}, not found!", command.name).as_str()))).await?;
+                            self.wtp_client
+                                .send_packet(OutPayloadType::Message(MessagePayload::from_str(
+                                    format!("Command {}, not found!", command.name).as_str(),
+                                )))
+                                .await?;
                         }
                     };
                 }

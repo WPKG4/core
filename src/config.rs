@@ -29,19 +29,24 @@ lazy_static! {
         Some(x) => x.to_string(),
         None => "https://cdn.wpkg.ovh".to_string(),
     };
+    pub static ref BINARY_SPLIT_SIZE: usize = 1000;
     pub static ref IP: String = match option_env!("IP") {
         Some(x) => x.to_string(),
         None => "127.0.0.1:5000".to_string(),
     };
-
     pub static ref PING_INTERVAL: Duration = Duration::from_secs(5 * 60);
-    static ref CONFIG: RwLock<HashMap<String, String>> = RwLock::new(match fs::exists(INSTALL_PATH.join("config.toml")).unwrap_or(false) {
-        true => {
-            let toml_string = fs::read_to_string(INSTALL_PATH.join("config.toml")).unwrap_or("failed to load config!".to_string());
-            toml::from_str(&toml_string).unwrap_or(load_default_config())
-        },
-        false => load_default_config(),
-    });
+    static ref CONFIG: RwLock<HashMap<String, String>> =
+        RwLock::new(match fs::exists(INSTALL_PATH.join("config.toml")).unwrap_or(false) {
+            true => {
+                fs::read_to_string(INSTALL_PATH.join("config.toml"))
+                    .map(|toml_string| {
+                        toml::from_str::<HashMap<String, String>>(&toml_string)
+                            .unwrap_or_else(|_| load_default_config())
+                    })
+                    .unwrap_or_else(|_| load_default_config())
+            }
+            false => load_default_config(),
+        });
 }
 
 pub async fn set_config(key: &str, value: &str) {

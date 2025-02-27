@@ -5,7 +5,6 @@ use anyhow::Result;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_rustls::client::TlsStream;
-use tracing::field::debug;
 use tracing::{debug, error, info};
 
 use crate::client::net::tls::tls_stream;
@@ -14,7 +13,6 @@ use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType}
 use crate::client::net::wtp::WtpClient;
 use crate::commands::command::CommandPayload;
 use crate::commands::CommandsManager;
-use crate::commands::Command;
 use crate::config;
 pub(crate) struct CoreClient<R>
 where

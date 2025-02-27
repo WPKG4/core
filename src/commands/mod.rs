@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use fetchscreen::Fetchscreen;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::client::coreclient::CoreClient;
 
-pub mod hello;
 pub mod command;
+pub mod msg;
+pub mod fetchscreen;
+pub mod utils;
 
 #[async_trait]
 pub trait Command<R>: Send + Sync
@@ -14,7 +17,11 @@ where
     R: AsyncRead + AsyncWrite + Unpin,
 {
     fn help(&self) -> String;
-    async fn execute(&self, client: &mut CoreClient<R>, args: HashMap<String, String>) -> anyhow::Result<()>;
+    async fn execute(
+        &self,
+        client: &mut CoreClient<R>,
+        args: HashMap<String, String>,
+    ) -> anyhow::Result<()>;
 }
 
 #[derive(Default)]
@@ -33,7 +40,8 @@ where
         let mut commands: HashMap<String, Box<dyn Command<R>>> = HashMap::new();
 
         // Command definition
-        commands.insert(hello::NAME.to_string(), Box::new(hello::Msg));
+        commands.insert(msg::NAME.to_string(), Box::new(msg::Msg));
+        commands.insert(fetchscreen::NAME.to_string(), Box::new(fetchscreen::Fetchscreen));
 
         Self { commands }
     }
