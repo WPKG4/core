@@ -1,7 +1,8 @@
 use anyhow::Result;
-use image::codecs::jpeg::JpegEncoder;
 use scap::capturer::{Capturer, Options};
 use scap::frame::Frame;
+
+use super::encode_jpeg;
 
 pub fn fetch_screenshot() -> Result<Vec<u8>> {
     if !scap::is_supported() {
@@ -12,14 +13,12 @@ pub fn fetch_screenshot() -> Result<Vec<u8>> {
         return Err(anyhow::anyhow!("Permissions are not sufficient to capture screen data"));
     }
 
-    let options = Options {
+    let mut recorder = Capturer::build(Options {
         fps: 60,
         show_cursor: true,
         output_type: scap::frame::FrameType::BGRAFrame,
         ..Default::default()
-    };
-
-    let mut recorder = Capturer::build(options)?;
+    })?;
 
     recorder.start_capture();
 
@@ -30,7 +29,7 @@ pub fn fetch_screenshot() -> Result<Vec<u8>> {
 
     recorder.stop_capture();
 
-    return Ok(jpeg_data)
+    Ok(jpeg_data)
 }
 
 fn process_frame(frame: Frame) -> Option<Vec<u8>> {
@@ -75,16 +74,3 @@ fn xbgr_to_jpg(frame: &scap::frame::XBGRFrame) -> Option<Vec<u8>> {
     encode_jpeg(&rgb_data, frame.width, frame.height)
 }
 
-fn encode_jpeg(rgb_data: &[u8], width: i32, height: i32) -> Option<Vec<u8>> {
-    let mut buffer = Vec::new();
-    let mut encoder = JpegEncoder::new_with_quality(&mut buffer, 100);
-    
-    encoder.encode(
-        &rgb_data,
-        width as u32,
-        height as u32,
-        image::ExtendedColorType::Rgb8
-    ).ok()?;
-
-    Some(buffer)
-}
