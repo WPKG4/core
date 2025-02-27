@@ -17,6 +17,9 @@ jobs:
         with:
           toolchain: nightly
           cache: false
+        
+      - name: Install Libaries
+        run: sudo apt update;sudo apt install -y libpipewire-0.3-dev clang libdbus-1-dev pkg-config
 
       - name: Build
         env:
