@@ -8,10 +8,10 @@ use tokio_rustls::client::TlsStream;
 use tracing::{debug, error, info};
 use whoami::fallible::{hostname, username};
 
-use crate::client::coreclient::CoreClient;
+use crate::client::wpkgclient::coreclient::CoreClient;
 use crate::client::net::tls::tls_stream;
 use crate::client::net::types::r#in::payloads::InPayloadType;
-use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::types::out::payloads::{ActionPayload, OutPayloadType};
 use crate::client::net::types::shared::MessagePayload;
 use crate::client::net::wtp::WtpClient;
 use crate::commands::command::CommandPayload;
@@ -25,12 +25,12 @@ where
 }
 
 impl MasterClient<TcpStream> {
-    pub async fn new(ip: &str) -> Result<Self> {
+    pub async fn from_tcp(ip: &str) -> Result<Self> {
         Ok(MasterClient { wtp_client: WtpClient::new(TcpStream::connect(ip).await?) })
     }
 }
 impl MasterClient<TlsStream<TcpStream>> {
-    pub async fn new_tls(ip: &str) -> Result<Self> {
+    pub async fn from_tls(ip: &str) -> Result<Self> {
         Ok(MasterClient { wtp_client: WtpClient::new(tls_stream(ip).await?) })
     }
 }
@@ -40,7 +40,7 @@ where
 {
     pub async fn register(&mut self) -> Result<()> {
         self.wtp_client
-            .send_packet(OutPayloadType::Action(OutActionPayload {
+            .send_packet(OutPayloadType::Action(ActionPayload {
                 name: "core-init".to_string(),
                 parameters: HashMap::from([
                     ("uuid".to_string(), config::get_config("uuid").await?),
@@ -83,7 +83,7 @@ where
                     match command.name.as_str() {
                         "NEW" => {
                             tokio::spawn(async move {
-                                let mut core_client = CoreClient::new(
+                                let mut core_client = CoreClient::from_tcp(
                                     &config::get_config("ip")
                                         .await
                                         .expect("Could not get IP Addres!"),

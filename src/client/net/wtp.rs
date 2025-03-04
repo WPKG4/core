@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::{self, Instant};
 use tracing::{debug, info};
 
-use crate::client::net::types::r#in::payloads::{InActionPayload, InPayloadType};
+use crate::client::net::types::r#in::payloads::{ActionResponse, InPayloadType};
 use crate::client::net::types::out::payloads::OutPayloadType;
 use crate::client::net::types::shared::{BinaryPayload, MessagePayload};
 use crate::config::PING_INTERVAL;
@@ -105,7 +105,7 @@ where
         let message = from_utf8(&bytes)?;
         info!("<RECEIVE> a \"{}\" {} len {}: {}", action_name, error_code, len, message);
 
-        Ok(InPayloadType::Action(InActionPayload {
+        Ok(InPayloadType::Action(ActionResponse {
             error: error_code.to_string(),
             name: action_name.to_string(),
             message: message.to_string(),

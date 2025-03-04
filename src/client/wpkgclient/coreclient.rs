@@ -9,7 +9,7 @@ use tracing::{debug, error, info};
 
 use crate::client::net::tls::tls_stream;
 use crate::client::net::types::r#in::payloads::InPayloadType;
-use crate::client::net::types::out::payloads::{OutActionPayload, OutPayloadType};
+use crate::client::net::types::out::payloads::{ActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
 use crate::commands::command::CommandPayload;
 use crate::commands::CommandsManager;
@@ -22,12 +22,12 @@ where
 }
 
 impl CoreClient<TcpStream> {
-    pub async fn new(ip: &str) -> Result<Self> {
+    pub async fn from_tcp(ip: &str) -> Result<Self> {
         Ok(CoreClient { wtp_client: WtpClient::new(TcpStream::connect(ip).await?) })
     }
 }
 impl CoreClient<TlsStream<TcpStream>> {
-    pub async fn new_tls(ip: &str) -> Result<Self> {
+    pub async fn from_tls(ip: &str) -> Result<Self> {
         Ok(CoreClient { wtp_client: WtpClient::new(tls_stream(ip).await?) })
     }
 }
@@ -37,7 +37,7 @@ where
 {
     pub async fn register(&mut self) -> Result<()> {
         self.wtp_client
-            .send_packet(OutPayloadType::Action(OutActionPayload {
+            .send_packet(OutPayloadType::Action(ActionPayload {
                 name: "new-socket".to_string(),
                 parameters: HashMap::from([(
                     "uuid".to_string(),

@@ -8,7 +8,7 @@ use serde::Deserialize;
 use tokio::{fs, time};
 use tracing::{debug, error};
 
-use crate::config::{self, INSTALL_PATH};
+use crate::{config::{self, INSTALL_PATH}, utils};
 
 #[derive(Debug, Deserialize)]
 struct UpdateInfo {
@@ -87,7 +87,7 @@ pub async fn start_updater() {
                                 break;
                             }
 
-                            if let Err(err) = crate::install::install(save_path).await {
+                            if let Err(err) = utils::install::install(save_path).await {
                                 error!("Update failed: {}", err);
                                 break;
                             };

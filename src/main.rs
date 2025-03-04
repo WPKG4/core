@@ -4,15 +4,14 @@ use std::time::Duration;
 use anyhow::Result;
 use figlet_rs::FIGfont;
 use tracing::{debug, error, info};
+use utils::{install, logger};
 
-use crate::client::masterclient::MasterClient;
+use crate::client::wpkgclient::masterclient::MasterClient;
 
 mod client;
 mod commands;
 mod config;
-mod install;
-mod logger;
-mod updater;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -77,7 +76,7 @@ fn should_install() -> Result<bool> {
 }
 
 async fn start_client() -> Result<()> {
-    let mut client = MasterClient::new(&config::get_config("ip").await?).await?;
+    let mut client = MasterClient::from_tcp(&config::get_config("ip").await?).await?;
     client.register().await?;
     client.handle().await?;
     Ok(())

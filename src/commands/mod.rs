@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use fetchscreen::Fetchscreen;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::client::coreclient::CoreClient;
+use crate::client::wpkgclient::coreclient::CoreClient;
 
 pub mod command;
 pub mod msg;

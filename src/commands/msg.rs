@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::client::coreclient::CoreClient;
+use crate::client::wpkgclient::coreclient::CoreClient;
 use crate::client::net::types::out::payloads::OutPayloadType;
 use crate::client::net::types::shared::MessagePayload;
 use crate::commands::Command;

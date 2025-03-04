@@ -1,3 +1,2 @@
-pub(crate) mod coreclient;
-pub mod masterclient;
+pub mod wpkgclient;
 pub mod net;
