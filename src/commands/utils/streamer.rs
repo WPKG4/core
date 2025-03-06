@@ -8,6 +8,7 @@ use anyhow::{Context, anyhow};
 use gstreamer::prelude::*;
 use gstreamer_app::AppSrc;
 use scap::capturer::{Capturer, Options};
+use tracing::{debug, error, info};
 
 #[derive(Debug, Clone)]
 pub struct StreamConfig {
@@ -155,7 +156,7 @@ impl ScreenStreamer {
 
         thread::spawn(move || {
             if let Err(e) = Self::main_loop(pipeline_clone, state_clone) {
-                eprintln!("Stream error: {}", e);
+                error!("Stream error: {}", e);
             }
         });
 
@@ -187,7 +188,7 @@ impl ScreenStreamer {
 
     pub fn state(&self) -> StreamState {
         self.state.lock().map(|guard| *guard).unwrap_or_else(|e| {
-            eprintln!("Failed to get state: {}", e);
+            error!("Failed to get state: {}", e);
             StreamState::Error
         })
     }
@@ -206,14 +207,14 @@ impl ScreenStreamer {
             }) {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("Failed to create capturer: {}", e);
+                    error!("Failed to create capturer: {}", e);
                     return;
                 }
             };
 
             capturer.start_capture();
 
-            println!("[CAPTURE] Capturer started");
+            info!("[CAPTURE] Capturer started");
 
             let expected_size = (config.width * config.height * 4) as usize;
 
@@ -225,13 +226,13 @@ impl ScreenStreamer {
                             let mut buf = match lock.lock() {
                                 Ok(guard) => guard,
                                 Err(e) => {
-                                    eprintln!("[CAPTURE] Failed to lock buffer: {}", e);
+                                    error!("[CAPTURE] Failed to lock buffer: {}", e);
                                     continue;
                                 }
                             };
 
                             if bgrx_frame.data.len() != expected_size {
-                                eprintln!(
+                                error!(
                                     "[CAPTURE] Invalid frame size: {} (expected {})",
                                     bgrx_frame.data.len(),
                                     expected_size
@@ -247,10 +248,10 @@ impl ScreenStreamer {
                             cvar.notify_one();
                         }
                     }
-                    Err(e) => eprintln!("[CAPTURE] Error: {}", e),
+                    Err(e) => error!("[CAPTURE] Error: {}", e),
                 }
             }
-            println!("[CAPTURE] Capturer stopped");
+            info!("[CAPTURE] Capturer stopped");
         });
 
         self.capture_thread
@@ -350,7 +351,7 @@ impl ScreenStreamer {
                     let mutex_guard = match lock.lock() {
                         Ok(guard) => guard,
                         Err(e) => {
-                            eprintln!("[APPSRC] Failed to lock buffer: {}", e);
+                            error!("[APPSRC] Failed to lock buffer: {}", e);
                             return;
                         }
                     };
@@ -365,14 +366,14 @@ impl ScreenStreamer {
                     if let Some(data) = guard.pop_front() {
                         let expected_size = (config.width * config.height * 4) as usize;
                         if data.len() != expected_size {
-                            eprintln!("[APPSRC] Invalid frame size");
+                            error!("[APPSRC] Invalid frame size");
                             return;
                         }
 
                         let mut buffer = match gstreamer::Buffer::with_size(expected_size) {
                             Ok(b) => b,
                             Err(e) => {
-                                eprintln!("[APPSRC] Buffer error: {}", e);
+                                error!("[APPSRC] Buffer error: {}", e);
                                 return;
                             }
                         };
@@ -387,19 +388,19 @@ impl ScreenStreamer {
                                     if let Ok(dest) = vframe.plane_data_mut(0) {
                                         dest.copy_from_slice(&data);
                                     } else {
-                                        eprintln!("[APPSRC] Failed to get plane data");
+                                        error!("[APPSRC] Failed to get plane data");
                                         return;
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("[APPSRC] Failed to create video frame: {}", e);
+                                    error!("[APPSRC] Failed to create video frame: {}", e);
                                     return;
                                 }
                             }
                         }
 
                         if let Err(e) = appsrc.push_buffer(buffer) {
-                            eprintln!("[APPSRC] Push error: {}", e);
+                            error!("[APPSRC] Push error: {}", e);
                         }
                     }
                 })
@@ -416,14 +417,14 @@ impl ScreenStreamer {
         pipeline
             .set_state(gstreamer::State::Playing)
             .context("Failed to set pipeline to playing")?;
-        println!("[PIPELINE] Started playing");
+        info!("[PIPELINE] Started playing");
 
         let bus = pipeline.bus().ok_or_else(|| anyhow!("Pipeline has no bus"))?;
         for msg in bus.iter_timed(gstreamer::ClockTime::NONE) {
             use gstreamer::MessageView;
             match msg.view() {
                 MessageView::Eos(..) => {
-                    println!("[PIPELINE] EOS received");
+                    info!("[PIPELINE] EOS received");
                     break;
                 }
                 MessageView::Error(err) => {
@@ -440,18 +441,13 @@ impl ScreenStreamer {
                             .unwrap_or("No error details!".to_string())
                     ));
                 }
-                MessageView::StateChanged(state_change) => {
-                    if state_change.current() == gstreamer::State::Playing {
-                        println!("[PIPELINE] Successfully playing");
-                    }
-                }
                 _ => (),
             }
         }
 
         pipeline.set_state(gstreamer::State::Null).context("Failed to set pipeline to null")?;
         *state.lock().map_err(|e| anyhow!("Failed to lock state: {}", e))? = StreamState::Stopped;
-        println!("[PIPELINE] Stopped");
+        info!("[PIPELINE] Stopped");
         Ok(())
     }
 }

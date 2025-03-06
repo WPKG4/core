@@ -19,11 +19,12 @@ lazy_static::lazy_static! {
         Arc::new(Mutex::new(ScreenStreamer::new()));
 }
 
-async fn send_error<R: AsyncRead + AsyncWrite + Unpin + Send>(
+async fn send_response<R: AsyncRead + AsyncWrite + Unpin + Send>(
     client: &mut CoreClient<R>,
+    error_code: &str,
     message: &str,
 ) -> anyhow::Result<()> {
-    let formatted = format!("ERR {} {}", message.len(), message);
+    let formatted = format!("{} {} {}", error_code, message.len(), message);
     client
         .wtp_client
         .send_packet(OutPayloadType::Message(MessagePayload::from_str(&formatted)))
@@ -31,7 +32,6 @@ async fn send_error<R: AsyncRead + AsyncWrite + Unpin + Send>(
     Ok(())
 }
 
-#[async_trait]
 #[async_trait]
 impl<R> Command<R> for StreamScreen
 where
@@ -45,7 +45,7 @@ where
         let request = match args.get("request") {
             Some(value) => value,
             None => {
-                send_error(client, "Missing 'request' parameter").await?;
+                send_response(client, "ERR", "Missing 'request' parameter").await?;
                 return Ok(());
             }
         };
@@ -55,7 +55,7 @@ where
                 let config = match StreamConfig::from_args(&args) {
                     Ok(config) => config,
                     Err(e) => {
-                        send_error(client, &format!("Config error: {}", e)).await?;
+                        send_response(client, "ERR", &format!("Config error: {}", e)).await?;
                         return Ok(());
                     }
                 };
@@ -68,7 +68,7 @@ where
                 };
 
                 if let Err(e) = start_result {
-                    send_error(client, &format!("Failed to start stream: {}", e)).await?;
+                    send_response(client, "ERR", &format!("Failed to start stream: {}", e)).await?;
                 }
             }
             "stop" => {
@@ -76,8 +76,17 @@ where
                     SCREEN_STREAMER.lock().map_err(|_| anyhow::anyhow!("Mutex poisoned"))?;
                 let _ = streamer.stop();
             }
+            "state" => {
+                let state = {
+                    let streamer =
+                        SCREEN_STREAMER.lock().map_err(|_| anyhow::anyhow!("Mutex poisoned"))?;
+                    streamer.state()
+                };
+
+                send_response(client, "OK", &format!("{:?}", state)).await?;
+            }
             _ => {
-                send_error(client, &format!("Unknown request type: {}", request)).await?;
+                send_response(client, "ERR", &format!("Unknown request type: {}", request)).await?;
             }
         }
 
