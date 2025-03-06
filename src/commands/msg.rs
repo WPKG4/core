@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::client::wpkgclient::coreclient::CoreClient;
 use crate::client::net::types::out::payloads::OutPayloadType;
 use crate::client::net::types::shared::MessagePayload;
+use crate::client::wpkgclient::coreclient::CoreClient;
 use crate::commands::Command;
 
 pub struct Msg;
@@ -17,9 +17,6 @@ impl<R> Command<R> for Msg
 where
     R: AsyncRead + AsyncWrite + Unpin + Send,
 {
-    fn help(&self) -> String {
-        "<message> - displays message".to_string()
-    }
     #[allow(unused_variables)]
     async fn execute(
         &self,

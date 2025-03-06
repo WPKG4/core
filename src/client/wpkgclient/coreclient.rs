@@ -11,8 +11,8 @@ use crate::client::net::tls::tls_stream;
 use crate::client::net::types::r#in::payloads::InPayloadType;
 use crate::client::net::types::out::payloads::{ActionPayload, OutPayloadType};
 use crate::client::net::wtp::WtpClient;
-use crate::commands::command::CommandPayload;
 use crate::commands::CommandsManager;
+use crate::commands::command::CommandPayload;
 use crate::config;
 pub(crate) struct CoreClient<R>
 where
@@ -33,7 +33,7 @@ impl CoreClient<TlsStream<TcpStream>> {
 }
 impl<R> CoreClient<R>
 where
-    R: AsyncRead + AsyncWrite + Unpin + Send,
+    R: AsyncRead + AsyncWrite + Unpin + Send + Sync,
 {
     pub async fn register(&mut self) -> Result<()> {
         self.wtp_client
